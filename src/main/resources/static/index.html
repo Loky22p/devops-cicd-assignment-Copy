@@ -1,0 +1,98 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>DevOps Calculator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .calculator {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            width: 320px;
+            text-align: center;
+            box-shadow: 0 8px 25px #0002;
+        }
+        input, select, button {
+            box-sizing: border-box;
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            border: 1px solid #cbd5e1;
+            border-radius: 7px;
+            font-size: 16px;
+        }
+        button {
+            background: #2563eb;
+            color: white;
+            cursor: pointer;
+            border: none;
+        }
+        button:hover { background: #1d4ed8; }
+        #result {
+            margin-top: 20px;
+            font-size: 22px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="calculator">
+        <h2>DevOps Calculator</h2>
+        <p>Java Spring Boot Application</p>
+
+        <input type="number" id="a" placeholder="First number" step="any">
+        <input type="number" id="b" placeholder="Second number" step="any">
+
+        <select id="operation">
+            <option value="add">Addition (+)</option>
+            <option value="subtract">Subtraction (-)</option>
+            <option value="multiply">Multiplication (×)</option>
+            <option value="divide">Division (÷)</option>
+        </select>
+
+        <button onclick="calculate()">Calculate</button>
+
+        <div id="result">Result: --</div>
+    </div>
+
+    <script>
+        async function calculate() {
+            const a = document.getElementById("a").value;
+            const b = document.getElementById("b").value;
+            const operation = document.getElementById("operation").value;
+            const result = document.getElementById("result");
+
+            if (a === "" || b === "") {
+                result.textContent = "Please enter both numbers";
+                return;
+            }
+
+            try {
+                const params = new URLSearchParams({ a, b, operation });
+                const response = await fetch("/api/calculate?" + params);
+
+                if (!response.ok) {
+                    result.textContent = "Invalid calculation";
+                    return;
+                }
+
+                const value = await response.json();
+                result.textContent = "Result: " + value;
+            } catch (error) {
+                result.textContent = "Unable to connect to application";
+            }
+        }
+    </script>
+</body>
+</html>
