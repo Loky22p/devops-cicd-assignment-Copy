@@ -2,7 +2,15 @@
 pipeline {
     agent any
 
+    environment {
+        AWS_REGION = 'ap-south-1'
+        ECR_REGISTRY = '207235249613.dkr.ecr.ap-south-1.amazonaws.com'
+        ECR_REPOSITORY = 'calculator-app'
+        IMAGE_TAG = "ci-${BUILD_NUMBER}"
+    }
+
     stages {
+
         stage('Checkout Code') {
             steps {
                 checkout scm
@@ -19,7 +27,10 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarCloud') {
                     withCredentials([
-                        string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')
+                        string(
+                            credentialsId: 'sonarqube-token',
+                            variable: 'SONAR_TOKEN'
+                        )
                     ]) {
                         sh '''
                             mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:5.5.0.6356:sonar \
@@ -35,8 +46,30 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh 'docker build -t calculator-app:ci-${BUILD_NUMBER} .'
-                sh 'docker images calculator-app'
+                sh '''
+                    docker build -t calculator-app:${IMAGE_TAG} .
+                    docker images calculator-app
+                '''
+            }
+        }
+
+        stage('Push Docker Image to ECR') {
+            steps {
+                sh '''
+                    set -eu
+
+                    export DOCKER_CONFIG="$(mktemp -d)"
+                    trap 'rm -rf "$DOCKER_CONFIG"' EXIT
+
+                    aws ecr get-login-password --region "$AWS_REGION" | \
+                      docker login --username AWS --password-stdin "$ECR_REGISTRY"
+
+                    docker tag "calculator-app:${IMAGE_TAG}" \
+                      "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+                    docker push \
+                      "${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+                '''
             }
         }
     }
@@ -45,6 +78,16 @@ pipeline {
         always {
             junit allowEmptyResults: true,
                   testResults: 'target/surefire-reports/*.xml'
+        }
+
+        success {
+            echo "CI/CD Pipeline SUCCESS!"
+            echo "Docker image pushed to AWS ECR."
+            echo "Image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+        }
+
+        failure {
+            echo 'CI/CD Pipeline FAILED. Check console output.'
         }
     }
 }
