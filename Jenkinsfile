@@ -19,10 +19,7 @@ pipeline {
             steps {
                 withSonarQubeEnv('SonarCloud') {
                     withCredentials([
-                        string(
-                            credentialsId: 'sonarqube-token',
-                            variable: 'SONAR_TOKEN'
-                        )
+                        string(credentialsId: 'sonarqube-token', variable: 'SONAR_TOKEN')
                     ]) {
                         sh '''
                             mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:5.5.0.6356:sonar \
@@ -33,14 +30,14 @@ pipeline {
                         '''
                     }
                 }
-
-         stage('Docker Build') {
-            steps {
-             sh 'docker build -t calculator-app:ci-${BUILD_NUMBER} .'
-             sh 'docker images calculator-app'
-               }
             }
-          }
+        }
+
+        stage('Docker Build') {
+            steps {
+                sh 'docker build -t calculator-app:ci-${BUILD_NUMBER} .'
+                sh 'docker images calculator-app'
+            }
         }
     }
 
