@@ -33,7 +33,14 @@ pipeline {
                         '''
                     }
                 }
+
+         stage('Docker Build') {
+            steps {
+             sh 'docker build -t calculator-app:ci-${BUILD_NUMBER} .'
+             sh 'docker images calculator-app'
+               }
             }
+          }
         }
     }
 
