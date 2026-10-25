@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
         - name: calculator-app
-          image: 207235249613.dkr.ecr.ap-south-1.amazonaws.com/calculator-app:ci-9
+          image: 207235249613.dkr.ecr.ap-south-1.amazonaws.com/calculator-app:ci-11
           ports:
             - containerPort: 8080
           resources:
