@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: calculator-app
+  annotations:
+    gitops-test: "github-auto-sync"
   namespace: calculator
 spec:
   replicas: 1
