@@ -17,13 +17,33 @@ pipeline {
             }
         }
 
+
+        stage('Check Commit Message') {
+            steps {
+                script {
+                    def message = sh(
+                        script: 'git log -1 --pretty=%B',
+                        returnStdout: true
+                    ).trim()
+
+                    env.SKIP_GITOPS_ONLY = message.contains('[gitops skip]') ? 'true' : 'false'
+
+                    if (env.SKIP_GITOPS_ONLY == 'true') {
+                        echo 'GitOps-only commit detected. Skipping CI build.'
+                    }
+                }
+            }
+        }
+
         stage('Maven Build and Test') {
+            when { expression { env.SKIP_GITOPS_ONLY != 'true' } }
             steps {
                 sh 'mvn -B clean verify'
             }
         }
 
         stage('SonarQube Scan and Quality Gate') {
+            when { expression { env.SKIP_GITOPS_ONLY != 'true' } }
             steps {
                 withSonarQubeEnv('SonarCloud') {
                     withCredentials([
@@ -45,6 +65,7 @@ pipeline {
         }
 
         stage('Docker Build') {
+            when { expression { env.SKIP_GITOPS_ONLY != 'true' } }
             steps {
                 sh '''
                     docker build -t calculator-app:${IMAGE_TAG} .
@@ -54,6 +75,7 @@ pipeline {
         }
 
         stage('Push Docker Image to ECR') {
+            when { expression { env.SKIP_GITOPS_ONLY != 'true' } }
             steps {
                 sh '''
                     set -eu
@@ -72,6 +94,21 @@ pipeline {
                 '''
             }
         }
+
+        stage('Update GitOps Image Tag') {
+            when { expression { env.SKIP_GITOPS_ONLY != 'true' } }
+            steps {
+                withCredentials([
+                    string(
+                        credentialsId: 'github-gitops-token',
+                        variable: 'GITHUB_TOKEN'
+                    )
+                ]) {
+                    sh 'bash scripts/update-gitops-image.sh'
+                }
+            }
+        }
+
     }
 
     post {
@@ -82,8 +119,14 @@ pipeline {
 
         success {
             echo "CI/CD Pipeline SUCCESS!"
-            echo "Docker image pushed to AWS ECR."
-            echo "Image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+            script {
+                if (env.SKIP_GITOPS_ONLY == 'true') {
+                    echo 'GitOps-only commit. Docker build skipped.'
+                } else {
+                    echo "Docker image pushed to AWS ECR."
+                    echo "Image: ${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+                }
+            }
         }
 
         failure {
